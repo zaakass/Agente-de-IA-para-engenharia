@@ -1,0 +1,390 @@
+{
+  "name": "IA para engenharia",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/crescibot",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        16
+      ],
+      "id": "03cd177a-9393-49b3-8df4-60bf828930f9",
+      "name": "Webhook",
+      "webhookId": "8a3a4254-f8dd-465c-9ab4-4e88607f622c"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "id",
+              "condition": "eq",
+              "keyValue": "={{ $json.body.uuid }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        192,
+        16
+      ],
+      "id": "5ab378f6-c183-4046-99d3-dd930888ed25",
+      "name": "perfil_usuario",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Tb7KIe7nM5N7u3C8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "respostas_ia",
+        "filterType": "string",
+        "filterString": "={{ \"usuario_id=eq.\" + $node[\"perfil_usuario\"].json[\"id\"] + \"&pergunta=eq.\" + $node[\"Webhook\"].json[\"body\"][\"pergunta\"] }}\n"
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "d31ef36b-8989-4133-ba79-352f86fa89d2",
+      "name": "consultar cache de respostas",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "Tb7KIe7nM5N7u3C8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ea984ee6-f7dd-4812-b6eb-467e8ea0087d",
+              "leftValue": "={{$json.length}}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        576,
+        0
+      ],
+      "id": "d81f7a9d-7781-4da9-bdb1-c814c5ccab3f",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"pergunta\": \"{{$json.body.pergunta}}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1216,
+        0
+      ],
+      "id": "324484a6-cefd-4f1b-a282-f7ef1ecd08ee",
+      "name": "tipo de pergunta"
+    },
+    {
+      "parameters": {
+        "tableId": "respostas_ia",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usuario_id",
+              "fieldValue": "={{ $('Webhook').item.json.body.uuid }}"
+            },
+            {
+              "fieldId": "pergunta",
+              "fieldValue": "={{ $('Webhook').item.json.body.question }}"
+            },
+            {
+              "fieldId": "resposta",
+              "fieldValue": "={{ $json.output }}"
+            },
+            {
+              "fieldId": "modelo",
+              "fieldValue": "\"GPT-4o-mini\""
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        0
+      ],
+      "id": "b29a89a9-ef8d-4751-ae28-b265f0be4455",
+      "name": "salvando resposta e pergunta",
+      "credentials": {
+        "supabaseApi": {
+          "id": "Tb7KIe7nM5N7u3C8",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9bc3ff2c-1572-43ca-8910-701b5251db98",
+              "name": "resposta",
+              "value": "={{$json[0].resposta}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        -224
+      ],
+      "id": "f0db9168-eafe-4b42-b605-aa03522665c2",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"resposta\": \"{{$json[\\\"resposta\\\"]}}\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        864,
+        16
+      ],
+      "id": "e6c67f39-49b1-4e77-87de-2ff7250d51c0",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Webhook').item.json.body.question }}",
+        "options": {
+          "systemMessage": "={\n  \"role\": \"system\",\n  \"content\": \"Você é um assistente técnico especializado em engenharia (refrigeração, elétrica, mecânica, etc.).\\n\\nSeu público principal são engenheiros e técnicos que estão trabalhando e têm pouco tempo para ler.\\n\\nSempre responda primeiro com um **resumo direto, prático e útil**, focado na ação que o profissional deve tomar.\\n\\nDepois, se necessário, forneça uma **explicação opcional** mais completa.\\n\\n---\\n\\**\\n(Solução objetiva, rápida, como se estivesse ajudando alguém no campo ou na obra)\\n\\n📘 **Explicação técnica (opcional):**\\n(Informações complementares, normas técnicas, teoria, recomendações para estudo, etc.)\\n\\n---\\n\\nSe a pergunta for urgente, **evite blocos longos e linguagem rebuscada**. Seja claro, prático e direto ao ponto.\\n\\nSe for uma pergunta ampla ou conceitual, aí sim, pode ser mais explicativo — mas sempre comece com o que o profissional deve fazer ou verificar na prática.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        1424,
+        0
+      ],
+      "id": "2cce9dfb-a519-414c-a24d-844940b96bf7",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1408,
+        224
+      ],
+      "id": "d87f4e6c-a43b-4372-9694-8e365b5235bd",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "m67kzTOrLwxAyscI",
+          "name": "n8n free OpenAI API credits"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1632,
+        224
+      ],
+      "id": "d270d8b5-88bf-4a7d-a098-7a6c060ff36c",
+      "name": "Calculator1"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "perfil_usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "perfil_usuario": {
+      "main": [
+        [
+          {
+            "node": "consultar cache de respostas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "consultar cache de respostas": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "tipo de pergunta": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "consultar cache de respostas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "salvando resposta e pergunta": {
+      "main": [
+        []
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        [
+          {
+            "node": "tipo de pergunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "salvando resposta e pergunta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator1": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b22bebed-3c15-4b2d-a4b5-5b32c268aa61",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e530b2978a79602ba5516c78c516b915bdd00c9813288d9f703e1557d90cb30f"
+  },
+  "id": "HlNpX0DYcTGc3Mgt",
+  "tags": []
+}
